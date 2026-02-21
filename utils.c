@@ -25,7 +25,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#ifdef __linux__
 #include <sys/reboot.h>
+#endif
+#ifdef __APPLE__
+#include <net/if_dl.h>
+#endif
 #include <ctype.h>
 
 #include <sys/mman.h>
@@ -494,6 +499,32 @@ int get_ip_address(char *address, char *netmask, char *name)
  */
 int get_mac_address(char *address, char *name)
 {
+#ifdef __APPLE__
+    struct ifaddrs *ifaddr, *ifa;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        log_error("Error in getifaddrs()");
+        return -1;
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL)
+            continue;
+        if (ifa->ifa_addr->sa_family == AF_LINK && strcmp(ifa->ifa_name, name) == 0) {
+            struct sockaddr_dl *sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+            unsigned char *mac = (unsigned char *)LLADDR(sdl);
+            sprintf(address, "%02x:%02x:%02x:%02x:%02x:%02x",
+                    mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+            log_debug("MAC address: <%s>", address);
+            freeifaddrs(ifaddr);
+            return 0;
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    log_error("Unable to get mac address");
+    return -4;
+#else
     struct ifreq ifr;
     struct ifconf ifc;
     char buf[MAX_LEN];
@@ -546,6 +577,7 @@ int get_mac_address(char *address, char *name)
     close(sock);
 
     return 0;
+#endif
 }
 
 /**
@@ -1289,12 +1321,13 @@ int is_topic_in_expression(const char *topic_expression, char *topic)
  */
 void *reboot_thread(void *arg)
 {
+#ifdef __linux__
     sync();
     setuid(0);
     sync();
     sleep(3);
     sync();
     reboot(RB_AUTOBOOT);
-
+#endif
     return NULL;
 }

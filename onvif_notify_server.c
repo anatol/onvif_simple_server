@@ -26,7 +26,9 @@
 #include <time.h>
 #include <signal.h>
 #include <poll.h>
+#ifdef __linux__
 #include <sys/inotify.h>
+#endif
 #include <dirent.h>
 #include <getopt.h>
 #include <errno.h>
@@ -414,6 +416,7 @@ void *sync_events_thread(void *arg)
     }
 }
 
+#ifdef __linux__
 int handle_inotify_events(int fd, char *dir)
 {
     /* Some systems cannot read integer variables if they are not
@@ -500,6 +503,7 @@ int handle_inotify_events(int fd, char *dir)
         }
     }
 }
+#endif /* __linux__ */
 
 void print_usage(char *progname)
 {
@@ -527,9 +531,12 @@ int main(int argc, char **argv)  {
     int foreground;
 
     int fd = -1;
-    int wd, poll_num;
+#ifdef __linux__
+    int wd;
     nfds_t nfds;
     struct pollfd fds[1];
+#endif
+    int poll_num;
 
     int acc;
 
@@ -719,6 +726,7 @@ int main(int argc, char **argv)  {
         exit(EXIT_FAILURE);
     }
 
+#ifdef __linux__
     // Check if INOTIFY_DIR exists
     if (access(INOTIFY_DIR, F_OK ) != -1) {
         // file exists
@@ -737,6 +745,7 @@ int main(int argc, char **argv)  {
         free(conf_file);
         exit(EXIT_FAILURE);
     }
+#endif
 
     // Open shared memory
     subs_evts = (shm_t *) create_shared_memory(1);
@@ -755,6 +764,7 @@ int main(int argc, char **argv)  {
         log_debug("%d: %s", i, service_ctx.events[i].input_file);
     }
 
+#ifdef __linux__
     // Create the file descriptor for accessing the inotify API
     fd = inotify_init1(IN_NONBLOCK);
     if (fd == -1) {
@@ -788,6 +798,7 @@ int main(int argc, char **argv)  {
         fds[0].fd = fd; // Inotify input
         fds[0].events = POLLIN;
     }
+#endif /* __linux__ */
 
     // Create thread to monitor subscriptions->push_need_sync
     pthread_t sync_events_pthread;
@@ -799,6 +810,7 @@ int main(int argc, char **argv)  {
     while (!exit_main) {
 
         // Check if new events are fired
+#ifdef __linux__
         if (fd != -1) {
             poll_num = poll(fds, nfds, -1);
             if (poll_num == -1) {
@@ -815,7 +827,9 @@ int main(int argc, char **argv)  {
                     handle_inotify_events(fd, INOTIFY_DIR);
                 }
             }
-        } else { // Inotify interface is not available
+        } else
+#endif /* __linux__ */
+        { // Inotify interface is not available
             for (i = 0; i < service_ctx.events_num; i++) {
                 acc = access(service_ctx.events[i].input_file, F_OK);
 
