@@ -605,6 +605,7 @@ int main(int argc, char **argv)  {
             break;
 
         case 'd':
+            errno = 0; // cleanup error code
             debug = strtol(optarg, &endptr, 10);
 
             /* Check for various possible errors */
