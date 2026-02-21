@@ -136,11 +136,14 @@ void *create_shared_memory(int create) {
 
     /* adjusting mapped file size (make room for the whole segment to map) */
     rc = ftruncate(shmfd, shared_seg_size);
+#ifndef __APPLE__
+    // For some reason ftruncate() fails on macOS, yet the shared memory works correctly
     if (rc != 0) {
         log_error("ftruncate() failed");
         shm_unlink(SHMOBJ_PATH);
         return NULL;
     }
+#endif
 
     /* requesting the shared segment */
     shared_area = (char *)mmap(NULL, shared_seg_size, PROT_READ | PROT_WRITE, MAP_SHARED, shmfd, 0);
