@@ -166,8 +166,8 @@ int main(int argc, char ** argv)
     rotate_log();
     fLog = fopen(DEFAULT_LOG_FILE, "w");
     if (fLog == NULL) {
-        fprintf(stderr, "Unable to open log file %s\n", DEFAULT_LOG_FILE);
-        exit(EXIT_FAILURE);
+        // Fall back to stderr if the log file cannot be opened (e.g. running as CGI).
+        fLog = stderr;
     }
     conf_file = conf_file_buffer;
     strcpy(conf_file, DEFAULT_CONF_FILE);

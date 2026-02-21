@@ -665,8 +665,11 @@ int main(int argc, char **argv)  {
         exit(EXIT_SUCCESS);
     }
 
-    // Open file log
+    // Open file log; fall back to stderr if the file cannot be opened.
     fLog = fopen(DEFAULT_LOG_FILE, "w");
+    if (fLog == NULL) {
+        fLog = stderr;
+    }
     log_add_fp(fLog, debug);
     log_set_level(debug);
     if (foreground == 0)

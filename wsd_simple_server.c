@@ -403,8 +403,11 @@ int main(int argc, char **argv)  {
         }
     }
 
-    // Open file log
+    // Open file log; fall back to stderr if the file cannot be opened.
     fLog = fopen(DEFAULT_LOG_FILE, "w");
+    if (fLog == NULL) {
+        fLog = stderr;
+    }
     log_add_fp(fLog, debug);
     log_set_level(debug);
     log_set_quiet(1);
